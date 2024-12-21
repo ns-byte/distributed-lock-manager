@@ -1,0 +1,88 @@
+
+syntax = "proto3";
+
+package lock_service;
+
+// Lock acquire/release arguments, with additional fields for request ID and version
+message lock_args {
+    int32 client_id = 1;
+    string request_id = 2;  // Unique ID for each request to handle duplicate detection
+}
+
+// Server response Status, can be expanded if more statuses are needed
+enum Status {
+    SUCCESS = 0;
+    FILE_ERROR = 1;
+    TIMEOUT_ERROR = 2;  // New status for heartbeat timeout scenarios
+    DUPLICATE_ERROR = 3;
+}
+
+message current_lock_holder {
+    int32 client_id = 1;
+}
+
+// Response struct with an optional lock version and current lock holder
+message Response {
+    Status status = 1;
+    int32 version = 2;  // Version to ensure versioned lock ownership
+    current_lock_holder current_lock_holder = 3;  // Include current lock holder details
+}
+// File append arguments
+message file_args {
+    string filename = 1;
+    bytes content = 2;
+    int32 client_id = 3;
+    string request_id=4;
+}
+
+// Field to hold an int, used for simple initialization requests
+message Int {
+    int32 rc = 1;
+}
+
+// Heartbeat message to keep track of active clients
+message Heartbeat {
+    int32 client_id = 1;
+}
+
+
+message VoteRequest {
+    string candidate_id = 1;
+    int32 term = 2;
+}
+
+message VoteResponse {
+    bool vote_granted = 1;
+}
+
+message FileAppendBackup{
+   string filename = 1;
+   bytes content = 2;
+}
+
+message Log{
+    bytes event = 1;
+}
+
+message Empty {}
+
+// Message for the Ping response
+message PingResponse {
+  string status = 1;  // Example: "OK" for healthy, "ERROR" for unhealthy
+}
+
+service LockService {
+    rpc client_init(Int) returns (Int);
+    rpc lock_acquire(lock_args) returns (Response);
+    rpc lock_release(lock_args) returns (Response);
+    rpc file_append(file_args) returns (Response);
+    rpc client_close(Int) returns (Int);
+    rpc heartbeat(Heartbeat) returns (Response);
+    rpc getCurrent_lock_holder(current_lock_holder) returns (Response);
+    rpc vote(VoteRequest) returns (VoteResponse);
+    rpc file_append_backup(FileAppendBackup) returns (Response);
+    rpc log_event_primary(Log) returns (Response);
+    rpc sync_log(Log) returns (Response);
+    rpc sync_file(FileAppendBackup) returns (Response);
+    rpc Ping(Empty) returns (PingResponse);
+}
